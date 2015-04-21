@@ -5,6 +5,10 @@ import os
 import socket
 
 
+import logging
+logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
+
+
 class LockException(Exception):
     """
     Represents an error with the locking.
@@ -46,10 +50,17 @@ class RedisLock(object):
         Try to acquires the lock.
         Returns True when we got the lock, else False.
         """
-        return self.redis.set(
+        logger.debug('Try to acuire lock: %s', self.lock_identifier)
+        lock_acuired = self.redis.set(
             self.lock_identifier, self.process_identifer,
             nx=True,
             ex=self.lock_time if self.lock_time > 5 else self.lock_time * 5)
+        if lock_acuired:
+            logger.info('Acquired lock: %s', self.lock_identifier)
+            return True
+        else:
+            logger.debug("Couldn't acquire lock: %s", self.lock_identifier)
+            return False
 
     def refresh(self):
         """
@@ -58,4 +69,8 @@ class RedisLock(object):
         if not self.redis.eval(self.lua_refresh, 1, [self.lock_identifier,
                                                      self.process_identifer,
                                                      self.lock_time]):
-            raise LockException('Could not refresh lock')
+            logger.error("Could not refresh lock: %s", self.lock_identifier)
+            raise LockException('Could not refresh lock: %s',
+                                self.lock_identifier)
+        logger.debug("Refreshed lock '%s' for %s seconds",
+                     self.lock_identifier, self.lock_time)
