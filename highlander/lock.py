@@ -38,7 +38,7 @@ class RedisLock(object):
         self.redis = redis
         self.lock_identifier = lock_identifier
         self.lock_time = lock_time
-        self.process_identifer = "%s:%s" % (socket.gethostname(), os.getpid())
+        self.process_identifer = "%s:%s" % (socket.getfqdn(), os.getpid())
         # Register the lua refresh script
 
     def acquire(self):
