@@ -56,7 +56,7 @@ class RedisLock(object):
         self.lock_time = lock_time
         self.process_identifer = "%s:%s" % (socket.gethostname(), os.getpid())
 
-    def acquire_lock(self):
+    def acquire(self):
         """
         Try to acquires the lock.
         Returns True when we got the lock, else False.
@@ -66,7 +66,7 @@ class RedisLock(object):
             lock_time = lock_time * 5
         return self._lock(lock_time, nx_flag=True)
 
-    def refresh_lock(self):
+    def refresh(self):
         """
         Refreshes the lock.
         """
@@ -138,11 +138,11 @@ class Highlander(object):
         """
         The mainloop(s) of highlander
         """
-        while not self._lock_manager.acquire_lock():
+        while not self._lock_manager.acquire():
             self.sleep()
         proc = Process(self._cmd)
         while proc.return_code() is None:
-            self._lock_manager.refresh_lock()
+            self._lock_manager.refresh()
             self.sleep()
         return proc.return_code()
 
