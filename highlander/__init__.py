@@ -29,6 +29,7 @@ from .lock import RedisLock, LockException
 
 
 import logging
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
@@ -160,7 +161,3 @@ def main():
         args.heartbeat_interval * 2)
     highlander = Highlander(lock_manager, cmd, args.heartbeat_interval)
     sys.exit(highlander.run())
-
-
-if __name__ == '__main__':
-    main()

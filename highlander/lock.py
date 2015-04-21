@@ -57,6 +57,8 @@ class RedisLock(object):
             ex=self.lock_time if self.lock_time > 5 else self.lock_time * 5)
         if lock_acuired:
             logger.info('Acquired lock: %s', self.lock_identifier)
+            logger.debug('Process identifier of lock %s is: %s',
+                         self.lock_identifier, self.process_identifer)
             return True
         else:
             logger.debug("Couldn't acquire lock: %s", self.lock_identifier)
@@ -66,9 +68,9 @@ class RedisLock(object):
         """
         Refreshes the lock.
         """
-        if not self.redis.eval(self.lua_refresh, 1, [self.lock_identifier,
-                                                     self.process_identifer,
-                                                     self.lock_time]):
+        if not self.redis.eval(self.lua_refresh, 1,
+                               self.lock_identifier, self.process_identifer,
+                               self.lock_time):
             logger.error("Could not refresh lock: %s", self.lock_identifier)
             raise LockException('Could not refresh lock: %s',
                                 self.lock_identifier)
