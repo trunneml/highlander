@@ -35,7 +35,7 @@ class LockException(Exception):
     """
 
 
-class RedisLockManager(object):
+class RedisLock(object):
     """
     This class implements a semaphore with the help of
     a global redis server.
@@ -170,7 +170,7 @@ def main():
                         default=3, type=int,
                         help='The heartbeat interval in seconds')
     args, cmd = parser.parse_known_args()
-    lock_manager = RedisLockManager(
+    lock_manager = RedisLock(
         args.redis_url, 'HIGHLANDER_%s' % " ".join(cmd),
         args.heartbeat_interval * 2)
     highlander = Highlander(lock_manager, cmd, args.heartbeat_interval)
