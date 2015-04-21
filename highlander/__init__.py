@@ -23,6 +23,7 @@ import signal
 import subprocess
 import sys
 import time
+import redis
 
 from .lock import RedisLock
 
@@ -113,8 +114,9 @@ def main():
                         default=3, type=int,
                         help='The heartbeat interval in seconds')
     args, cmd = parser.parse_known_args()
+    redis_connection = redis.Redis.from_url(args.redis_url)
     lock_manager = RedisLock(
-        args.redis_url, 'HIGHLANDER_%s' % " ".join(cmd),
+        redis_connection, 'HIGHLANDER_%s' % " ".join(cmd),
         args.heartbeat_interval * 2)
     highlander = Highlander(lock_manager, cmd, args.heartbeat_interval)
     sys.exit(highlander.run())
