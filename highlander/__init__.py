@@ -25,7 +25,7 @@ import sys
 import time
 import redis
 
-from .lock import RedisLock
+from .lock import RedisLock, LockException
 
 
 class Process(object):
@@ -42,9 +42,10 @@ class Process(object):
 
     def stop(self):
         """
-        Stops the subprocess with SIGTERM
+        Stops the subprocess with SIGTERM and returns the exit code.
         """
         self.process.terminate()
+        return self.process.wait()
 
     def sigterm_handler(self, signum, frame):
         """
@@ -65,7 +66,7 @@ class Highlander(object):
 
     """ The Highlander main class """
 
-    def __init__(self, lock_manager, cmd, heartbeat_interval):
+    def __init__(self, lock, cmd, heartbeat_interval):
         """
         Creates a new Highlander instance
 
@@ -74,21 +75,44 @@ class Highlander(object):
         :heartbeat_interval: The heartbeat interval in seconds
 
         """
-        self._lock_manager = lock_manager
+        self._lock = lock
         self._cmd = cmd
         self._heartbeat_interval = heartbeat_interval
+
+    def _acquire_lock(self):
+        """
+        Blocks until the lock could be aquired.
+        """
+        while not self._lock.acquire():
+            self.sleep()
+
+    def _sync_lock_with_process(self, proc):
+        """
+        Refreshes the lock until the process terminates.
+        Terminates the process when the lock could not be refreshed.
+        """
+        while proc.return_code() is None:
+            try:
+                self._lock.refresh()
+            except LockException as lock_exception:
+                return proc.stop()
+            else:
+                self.sleep()
+        return proc.return_code()
+
+    def _start_process(self):
+        """
+        Starts the defined command as a subprocess.
+        """
+        return Process(self._cmd)
 
     def run(self):
         """
         The mainloop(s) of highlander
         """
-        while not self._lock_manager.acquire():
-            self.sleep()
-        proc = Process(self._cmd)
-        while proc.return_code() is None:
-            self._lock_manager.refresh()
-            self.sleep()
-        return proc.return_code()
+        self._acquire_lock()
+        proc = self._start_process()
+        self._sync_lock_with_process(proc)
 
     def sleep(self):
         """
