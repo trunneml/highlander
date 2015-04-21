@@ -28,6 +28,10 @@ import redis
 from .lock import RedisLock, LockException
 
 
+import logging
+logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
+
+
 class Process(object):
     """
     Class that handels out subprocess
@@ -83,8 +87,11 @@ class Highlander(object):
         """
         Blocks until the lock could be aquired.
         """
+        logger.info('Acuiring lock')
         while not self._lock.acquire():
+            logger.debug("Couldn't acuire lock")
             self.sleep()
+        logger.info('Acuired lock')
 
     def _sync_lock_with_process(self, proc):
         """
@@ -93,17 +100,25 @@ class Highlander(object):
         """
         while proc.return_code() is None:
             try:
+                logger.debug("Refreshing lock")
                 self._lock.refresh()
-            except LockException as lock_exception:
+            except LockException:
+                logger.exception(
+                    "Could not refresh the lock! "
+                    "Terminating the subprocess '%r'",
+                    self._cmd)
                 return proc.stop()
             else:
                 self.sleep()
+        logger.info("Subprocess '%r' terminated with exit code: %s",
+                    self._cmd, proc.return_code())
         return proc.return_code()
 
     def _start_process(self):
         """
         Starts the defined command as a subprocess.
         """
+        logger.info("Starting subprocess: %s", " ".join(self._cmd))
         return Process(self._cmd)
 
     def run(self):
@@ -118,6 +133,7 @@ class Highlander(object):
         """
         Let's the os process sleep for the given heartbeat interval.
         """
+        logger.debug("Sleeping for %s seconds", self._heartbeat_interval)
         time.sleep(self._heartbeat_interval)
 
 
